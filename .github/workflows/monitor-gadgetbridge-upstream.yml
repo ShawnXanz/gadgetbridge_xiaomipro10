@@ -1,0 +1,59 @@
+name: Monitor Gadgetbridge upstream
+
+on:
+  schedule:
+    # 06:17 Asia/Shanghai; avoid the busy start of the UTC hour.
+    - cron: "17 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: monitor-gadgetbridge-upstream
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out personal build
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch authoritative Codeberg upstream
+        run: |
+          git remote add upstream https://codeberg.org/Freeyourgadget/Gadgetbridge.git
+          git fetch --no-tags upstream master
+          git fetch --no-tags origin upstream-snapshot:refs/remotes/origin/upstream-snapshot || true
+
+      - name: Classify upstream changes
+        id: classify
+        env:
+          UPSTREAM_REMOTE: upstream
+          UPSTREAM_BRANCH: master
+        run: bash .github/scripts/monitor-upstream.sh
+
+      - name: Create review issue
+        if: steps.classify.outputs.relevant == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPORT_FILE: ${{ steps.classify.outputs.report }}
+          DIRECT_COUNT: ${{ steps.classify.outputs.direct_count }}
+          POSSIBLE_COUNT: ${{ steps.classify.outputs.possible_count }}
+        run: |
+          gh label create upstream-review \
+            --color 8250df \
+            --description "Upstream Gadgetbridge changes awaiting manual review" \
+            --force
+          gh issue create \
+            --title "[Upstream] Gadgetbridge updates: ${DIRECT_COUNT} direct, ${POSSIBLE_COUNT} possible" \
+            --body-file "${REPORT_FILE}" \
+            --label upstream-review
+
+      - name: Record inspected upstream revision
+        run: |
+          git push --force origin upstream/master:refs/heads/upstream-snapshot
