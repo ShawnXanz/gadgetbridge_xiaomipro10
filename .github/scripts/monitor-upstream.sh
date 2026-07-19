@@ -21,8 +21,10 @@ if [[ "$(git rev-parse "${base_ref}")" == "$(git rev-parse "${UPSTREAM_REF}")" ]
     exit 0
 fi
 
-direct_regex='(^|/)(xiaomi|miband)(/|$)|MiBand10Pro|Xiaomi|sleep|hrv|spo2|blood.?oxygen|weather'
-possible_regex='(^|/)(build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|AndroidManifest\.xml)$|(^|/)gradle/|app/src/main/java/nodomain/freeyourgadget/gadgetbridge/(database|entities|model|activities/dashboard|activities/charts|service/Device|GBApplication)'
+xiaomi_regex='(^|/)(xiaomi|miband)(/|$)|MiBand10Pro|Xiaomi|Mi Band|Smart Band'
+health_regex='sleep|hrv|spo2|blood.?oxygen|weather'
+shared_health_regex='app/src/main/java/nodomain/freeyourgadget/gadgetbridge/(database|entities|activities/dashboard|activities/charts|service|impl)/'
+possible_regex='(^|/)(build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|AndroidManifest\.xml)$|(^|/)gradle/|app/src/main/java/nodomain/freeyourgadget/gadgetbridge/(database|entities|activities/dashboard|activities/charts|service/Device|GBApplication)'
 other_device_regex='app/src/(main|test)/java/nodomain/freeyourgadget/gadgetbridge/(devices|service/devices)/'
 
 direct_entries=()
@@ -33,7 +35,12 @@ while IFS= read -r commit; do
     files="$(git diff-tree --no-commit-id --name-only -r "${commit}")"
     combined="${subject}"$'\n'"${files}"
 
-    if grep -Eiq "${direct_regex}" <<< "${combined}"; then
+    if grep -Eiq "${xiaomi_regex}" <<< "${combined}"; then
+        direct_entries+=("${commit}")
+        continue
+    fi
+
+    if grep -Eiq "${health_regex}" <<< "${subject}" && grep -Eiq "${shared_health_regex}" <<< "${files}"; then
         direct_entries+=("${commit}")
         continue
     fi
