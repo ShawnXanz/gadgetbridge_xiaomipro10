@@ -54,4 +54,9 @@ public class MiBand10ProCoordinator extends XiaomiCoordinator {
     public DeviceKind getDeviceKind(@NonNull GBDevice device) {
         return DeviceKind.FITNESS_BAND;
     }
+
+    @Override
+    public boolean supportsHrvMeasurement(@NonNull final GBDevice device) {
+        return true;
+    }
 }

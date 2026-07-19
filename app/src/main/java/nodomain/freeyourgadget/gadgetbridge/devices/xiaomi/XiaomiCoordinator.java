@@ -51,11 +51,14 @@ import nodomain.freeyourgadget.gadgetbridge.capabilities.HeartRateCapability;
 import nodomain.freeyourgadget.gadgetbridge.capabilities.password.PasswordCapabilityImpl;
 import nodomain.freeyourgadget.gadgetbridge.capabilities.widgets.WidgetManager;
 import nodomain.freeyourgadget.gadgetbridge.devices.AbstractBLEDeviceCoordinator;
+import nodomain.freeyourgadget.gadgetbridge.devices.ComputedHrvSummarySampleProvider;
+import nodomain.freeyourgadget.gadgetbridge.devices.GenericHrvValueSampleProvider;
 import nodomain.freeyourgadget.gadgetbridge.devices.InstallHandler;
 import nodomain.freeyourgadget.gadgetbridge.devices.SampleProvider;
 import nodomain.freeyourgadget.gadgetbridge.devices.TimeSampleProvider;
 import nodomain.freeyourgadget.gadgetbridge.entities.BaseActivitySummaryDao;
 import nodomain.freeyourgadget.gadgetbridge.entities.DaoSession;
+import nodomain.freeyourgadget.gadgetbridge.entities.GenericHrvValueSampleDao;
 import nodomain.freeyourgadget.gadgetbridge.entities.XiaomiActivityFileDao;
 import nodomain.freeyourgadget.gadgetbridge.entities.XiaomiActivitySampleDao;
 import nodomain.freeyourgadget.gadgetbridge.entities.XiaomiDailySummarySampleDao;
@@ -68,6 +71,8 @@ import nodomain.freeyourgadget.gadgetbridge.model.ActivitySummaryParser;
 import nodomain.freeyourgadget.gadgetbridge.model.ActivityTrackProvider;
 import nodomain.freeyourgadget.gadgetbridge.model.BodyEnergySample;
 import nodomain.freeyourgadget.gadgetbridge.model.HeartRateSample;
+import nodomain.freeyourgadget.gadgetbridge.model.HrvSummarySample;
+import nodomain.freeyourgadget.gadgetbridge.model.HrvValueSample;
 import nodomain.freeyourgadget.gadgetbridge.model.PaiSample;
 import nodomain.freeyourgadget.gadgetbridge.model.RespiratoryRateSample;
 import nodomain.freeyourgadget.gadgetbridge.model.Spo2Sample;
@@ -126,8 +131,9 @@ public abstract class XiaomiCoordinator extends AbstractBLEDeviceCoordinator {
 
     @Override
     public Map<AbstractDao<?, ?>, Property> getAllDeviceDao(@NonNull final DaoSession session) {
-        Map<AbstractDao<?, ?>, Property> map = new HashMap<>(7);
+        Map<AbstractDao<?, ?>, Property> map = new HashMap<>(8);
         map.put(session.getBaseActivitySummaryDao(), BaseActivitySummaryDao.Properties.DeviceId);
+        map.put(session.getGenericHrvValueSampleDao(), GenericHrvValueSampleDao.Properties.DeviceId);
         map.put(session.getXiaomiActivitySampleDao(), XiaomiActivitySampleDao.Properties.DeviceId);
         map.put(session.getXiaomiActivityFileDao(), XiaomiActivityFileDao.Properties.DeviceId);
         map.put(session.getXiaomiDailySummarySampleDao(), XiaomiDailySummarySampleDao.Properties.DeviceId);
@@ -197,6 +203,16 @@ public abstract class XiaomiCoordinator extends AbstractBLEDeviceCoordinator {
     public TimeSampleProvider<? extends RespiratoryRateSample> getRespiratoryRateSampleProvider(@NonNull final GBDevice device, final DaoSession session) {
         // TODO XiaomiSleepRespiratoryRateSampleProvider
         return super.getRespiratoryRateSampleProvider(device, session);
+    }
+
+    @Override
+    public TimeSampleProvider<? extends HrvValueSample> getHrvValueSampleProvider(@NonNull final GBDevice device, final DaoSession session) {
+        return new GenericHrvValueSampleProvider(device, session);
+    }
+
+    @Override
+    public TimeSampleProvider<? extends HrvSummarySample> getHrvSummarySampleProvider(@NonNull final GBDevice device, final DaoSession session) {
+        return new ComputedHrvSummarySampleProvider(getHrvValueSampleProvider(device, session), device, session);
     }
 
     @Nullable
