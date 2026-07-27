@@ -70,6 +70,8 @@ import nodomain.freeyourgadget.gadgetbridge.activities.workouts.charts.DefaultWo
 import nodomain.freeyourgadget.gadgetbridge.activities.workouts.charts.WorkoutChartsActivity
 import nodomain.freeyourgadget.gadgetbridge.activities.workouts.entries.ActivitySummaryEntry
 import nodomain.freeyourgadget.gadgetbridge.activities.workouts.entries.ActivitySummaryGroup
+import nodomain.freeyourgadget.gadgetbridge.activities.workouts.entries.ActivitySummaryTableBuilder
+import nodomain.freeyourgadget.gadgetbridge.activities.workouts.entries.ActivitySummaryValue
 import nodomain.freeyourgadget.gadgetbridge.databinding.FragmentWorkoutDetailsBinding
 import nodomain.freeyourgadget.gadgetbridge.entities.BaseActivitySummary
 import nodomain.freeyourgadget.gadgetbridge.entities.Device
@@ -78,6 +80,7 @@ import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice
 import nodomain.freeyourgadget.gadgetbridge.model.ActivityKind
 import nodomain.freeyourgadget.gadgetbridge.model.ActivitySummaryData
 import nodomain.freeyourgadget.gadgetbridge.model.ActivitySummaryEntries
+import nodomain.freeyourgadget.gadgetbridge.model.ActivityTrack
 import nodomain.freeyourgadget.gadgetbridge.model.workout.Workout
 import nodomain.freeyourgadget.gadgetbridge.model.workout.WorkoutChart
 import nodomain.freeyourgadget.gadgetbridge.util.ActivitySummaryUtils
@@ -195,7 +198,9 @@ class WorkoutDetailsFragment : Fragment(), MenuProvider {
                             val activityTrackProvider =
                                 gbDevice.deviceCoordinator.getActivityTrackProvider(gbDevice, requireContext())
                             if (activityTrackProvider != null) {
-                                val activityPoints = activityTrackProvider.getActivityTrack(parsedWorkout.summary)?.allPoints
+                                val activityTrack = activityTrackProvider.getActivityTrack(parsedWorkout.summary)
+                                addTrackIntervals(parsedWorkout.data, activityTrack)
+                                val activityPoints = activityTrack?.allPoints
                                 if (!activityPoints.isNullOrEmpty()) {
                                     val defaultCharts = DefaultWorkoutCharts.buildDefaultCharts(
                                         requireContext(),
@@ -234,6 +239,43 @@ class WorkoutDetailsFragment : Fragment(), MenuProvider {
                 e.printStackTrace(PrintWriter(sw))
                 showError("Failed to load workout: $sw")
             }
+        }
+    }
+
+    /**
+     * Surface split metadata carried by DETAILS-only tracks. Device-native summary
+     * intervals win when present, avoiding duplicate tables for existing parsers.
+     */
+    private fun addTrackIntervals(data: ActivitySummaryData, track: ActivityTrack?) {
+        if (track == null || track.segmentInfos.size < 2 || data.has("intervals_header")) {
+            return
+        }
+        val table = ActivitySummaryTableBuilder(
+            ActivitySummaryEntries.GROUP_INTERVALS,
+            "intervals_header",
+            listOf(
+                "workout_lap",
+                ActivitySummaryEntries.ACTIVE_SECONDS,
+                ActivitySummaryEntries.DISTANCE_METERS,
+                ActivitySummaryEntries.PACE_AVG_SECONDS_KM,
+            )
+        )
+        track.segmentInfos.forEachIndexed { index, info ->
+            if (info.distanceMeters == null && info.durationSeconds == null && info.paceSecondsPerKm == null) {
+                return@forEachIndexed
+            }
+            table.addRow(
+                "interval_${index + 1}",
+                listOf(
+                    ActivitySummaryValue(index + 1, ActivitySummaryEntries.UNIT_NONE),
+                    ActivitySummaryValue(info.durationSeconds, ActivitySummaryEntries.UNIT_SECONDS),
+                    ActivitySummaryValue(info.distanceMeters, ActivitySummaryEntries.UNIT_METERS),
+                    ActivitySummaryValue(info.paceSecondsPerKm, ActivitySummaryEntries.UNIT_SECONDS_PER_KM),
+                )
+            )
+        }
+        if (table.hasRows()) {
+            table.addToSummaryData(data)
         }
     }
 

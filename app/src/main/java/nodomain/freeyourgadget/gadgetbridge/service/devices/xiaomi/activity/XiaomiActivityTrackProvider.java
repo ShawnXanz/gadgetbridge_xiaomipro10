@@ -198,18 +198,33 @@ public class XiaomiActivityTrackProvider implements ActivityTrackProvider {
     }
 
     @Nullable
-    private static byte[] readBytes(final XiaomiActivityFile entry) {
-        final File file = FileUtils.tryFixPath(entry.getFilePath());
-        if (file == null) {
-            LOG.warn("Raw file missing: {}", entry.getFilePath());
-            return null;
-        }
+    static byte[] readBytes(final XiaomiActivityFile entry) {
+        File file = null;
         try {
-            return FileUtils.readAll(file);
-        } catch (final IOException e) {
-            LOG.error("Failed to read {}", file, e);
-            return null;
+            file = FileUtils.tryFixPath(entry.getFilePath());
+        } catch (final RuntimeException e) {
+            // Path repair depends on Android storage context. A database BLOB must remain
+            // readable even if storage is unavailable or not initialized yet.
+            LOG.warn("Failed to resolve external raw file path {}", entry.getFilePath(), e);
         }
+        if (file != null && file.isFile()) {
+            try {
+                return FileUtils.readAll(file);
+            } catch (final IOException e) {
+                LOG.error("Failed to read external raw file {}", file, e);
+            }
+        } else {
+            LOG.warn("External raw file missing: {}", entry.getFilePath());
+        }
+
+        final byte[] rawData = entry.getRawData();
+        if (rawData != null) {
+            LOG.info("Using database copy of Xiaomi activity file ({} bytes)", rawData.length);
+            return rawData;
+        }
+
+        LOG.warn("No external or database copy available for Xiaomi activity file");
+        return null;
     }
 
     /** Legacy fallback for summaries created before XIAOMI_ACTIVITY_FILE existed. */

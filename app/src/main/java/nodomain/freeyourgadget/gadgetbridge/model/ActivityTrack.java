@@ -47,6 +47,8 @@ public class ActivityTrack {
         private final SegmentIntensity intensity;
         private final Integer distanceMeters;
         private final Integer strokes;
+        private final Integer durationSeconds;
+        private final Integer paceSecondsPerKm;
 
         public SegmentInfo() {
             this(SegmentIntensity.UNKNOWN, null, null);
@@ -59,9 +61,19 @@ public class ActivityTrack {
         public SegmentInfo(final SegmentIntensity intensity,
                            final Integer distanceMeters,
                            final Integer strokes) {
+            this(intensity, distanceMeters, strokes, null, null);
+        }
+
+        public SegmentInfo(final SegmentIntensity intensity,
+                           final Integer distanceMeters,
+                           final Integer strokes,
+                           final Integer durationSeconds,
+                           final Integer paceSecondsPerKm) {
             this.intensity = intensity != null ? intensity : SegmentIntensity.UNKNOWN;
             this.distanceMeters = distanceMeters;
             this.strokes = strokes;
+            this.durationSeconds = durationSeconds;
+            this.paceSecondsPerKm = paceSecondsPerKm;
         }
 
         public SegmentIntensity getIntensity() {
@@ -74,6 +86,14 @@ public class ActivityTrack {
 
         public Integer getStrokes() {
             return strokes;
+        }
+
+        public Integer getDurationSeconds() {
+            return durationSeconds;
+        }
+
+        public Integer getPaceSecondsPerKm() {
+            return paceSecondsPerKm;
         }
     }
 

@@ -19,6 +19,7 @@ package nodomain.freeyourgadget.gadgetbridge.service.devices.xiaomi.activity.imp
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -589,6 +590,134 @@ public class WorkoutDetailsParserTest {
         assertNotNull(track);
         final ActivityPoint p = track.getAllPoints().get(0);
         assertEquals(-1f, p.getSpeed(), 0.0001f);
+    }
+
+    private static byte[] buildTreadmillV9Bytes(final int startTs) {
+        final byte[] signature = {
+                (byte) 0xFF, (byte) 0xFF, (byte) 0x8B,
+                (byte) 0xFF, (byte) 0xBB, (byte) 0xBF
+        };
+        final int segmentHeaderSize = 19;
+        final int recordSize = 18;
+        final int dataSize = 8 + signature.length
+                + 2 * segmentHeaderSize + 2 * recordSize + 4;
+        final ByteBuffer buf = ByteBuffer.allocate(dataSize).order(ByteOrder.LITTLE_ENDIAN);
+        buf.put(new byte[7]);
+        buf.put((byte) 0);
+        buf.put(signature);
+
+        // First split: one second, 472 m in the segment header, pace 14:24.
+        buf.putInt(1);
+        buf.putInt(startTs);
+        buf.put((byte) 0);
+        buf.putInt(472);
+        buf.putInt(1);
+        buf.putShort((short) 864);
+        putTreadmillV9Record(buf, 0x23, 130, 12, 68,
+                1.2f, 531, 42, 3.0f, 107, 819, 200, 6.9f, 48);
+
+        // Second split starts immediately afterwards.
+        buf.putInt(1);
+        buf.putInt(startTs + 1);
+        buf.put((byte) 0);
+        buf.putInt(2674);
+        buf.putInt(1);
+        buf.putShort((short) 811);
+        putTreadmillV9Record(buf, 0x14, 140, 8, 70,
+                1.5f, 420, 36, 2.5f, 110, 750, 220, 7.2f, 52);
+
+        final byte[] arr = buf.array();
+        buf.putInt(CheckSums.getCRC32(arr, 0, arr.length - 4));
+        return arr;
+    }
+
+    private static void putTreadmillV9Record(final ByteBuffer buf,
+                                              final int caloriesAndSteps,
+                                              final int hr,
+                                              final int distanceDecimeters,
+                                              final int strideCm,
+                                              final float impactBodyWeight,
+                                              final int contactTimeMs,
+                                              final int flightTimeMs,
+                                              final float contactFlightRatio,
+                                              final int cadence,
+                                              final int paceSecondsPerKm,
+                                              final int powerWatts,
+                                              final float verticalRatioPercent,
+                                              final int verticalOscillationMm) {
+        buf.put((byte) caloriesAndSteps);
+        buf.put((byte) hr);
+        buf.put((byte) distanceDecimeters);
+        buf.put((byte) strideCm);
+        final int impactTimeInfo = (Math.round(impactBodyWeight * 10) << 26)
+                | (contactTimeMs << 13)
+                | flightTimeMs;
+        buf.putInt(impactTimeInfo);
+        buf.put((byte) Math.round(contactFlightRatio * 10));
+        buf.put((byte) cadence);
+        buf.putShort((short) paceSecondsPerKm);
+        buf.putShort((short) powerWatts);
+        buf.putShort((short) Math.round(verticalRatioPercent * 10));
+        buf.putShort((short) verticalOscillationMm);
+    }
+
+    @Test
+    public void testV9TreadmillParsesSplitsAndRunningDynamics() {
+        final int startTs = 1700013000;
+        final List<WorkoutDetailRecord> records =
+                WorkoutDetailsParser.parseBytes(makeFileId(9), buildTreadmillV9Bytes(startTs));
+
+        assertNotNull(records);
+        assertEquals(2, records.size());
+        final WorkoutDetailRecord first = records.get(0);
+        assertEquals(startTs, first.ts);
+        assertEquals(130, first.hr);
+        assertEquals(Integer.valueOf(3), first.steps);
+        assertEquals(Integer.valueOf(680), first.stepLengthMm);
+        assertEquals(Integer.valueOf(107), first.cadence);
+        assertEquals(Integer.valueOf(819), first.paceSecondsPerKm);
+        assertEquals(Integer.valueOf(200), first.powerWatts);
+        assertEquals(Integer.valueOf(531), first.groundContactTimeMs);
+        assertEquals(Integer.valueOf(42), first.flightTimeMs);
+        assertEquals(1.2f, first.impactForceBodyWeight, 0.001f);
+        assertEquals(3.0f, first.groundContactFlightRatio, 0.001f);
+        assertEquals(6.9f, first.verticalRatioPercent, 0.001f);
+        assertEquals(48f, first.verticalOscillationMm, 0.001f);
+        assertEquals(1.2d, first.distanceMeters, 0.001d);
+        assertTrue(first.segmentStart);
+        assertEquals(Integer.valueOf(472), first.segmentDistanceMeters);
+        assertEquals(Integer.valueOf(1), first.segmentDurationSeconds);
+        assertEquals(Integer.valueOf(864), first.segmentPaceSecondsPerKm);
+
+        assertTrue(records.get(1).segmentStart);
+        assertEquals(Integer.valueOf(2674), records.get(1).segmentDistanceMeters);
+        assertEquals(Integer.valueOf(811), records.get(1).segmentPaceSecondsPerKm);
+        assertEquals(2.0d, records.get(1).distanceMeters, 0.001d);
+    }
+
+    @Test
+    public void testGetActivityTrackV9Treadmill() {
+        final int startTs = 1700013000;
+        final ActivityTrack track =
+                new WorkoutDetailsParser().getActivityTrack(makeFileId(9), buildTreadmillV9Bytes(startTs));
+
+        assertNotNull(track);
+        assertEquals(2, track.getSegments().size());
+        assertEquals(Integer.valueOf(472), track.getSegmentInfos().get(0).getDistanceMeters());
+        assertEquals(Integer.valueOf(2674), track.getSegmentInfos().get(1).getDistanceMeters());
+        assertEquals(Integer.valueOf(864), track.getSegmentInfos().get(0).getPaceSecondsPerKm());
+        assertEquals(Integer.valueOf(811), track.getSegmentInfos().get(1).getPaceSecondsPerKm());
+
+        final ActivityPoint first = track.getAllPoints().get(0);
+        assertEquals(130, first.getHeartRate());
+        assertEquals(107, first.getCadence());
+        assertEquals(680, first.getStepLength());
+        assertEquals(1.2d, first.getDistance(), 0.001d);
+        assertEquals(1000f / 819f, first.getSpeed(), 0.001f);
+        assertEquals(200f, first.getPower(), 0.001f);
+        assertEquals(531f, first.getStanceTime(), 0.001f);
+        assertEquals(6.9f, first.getVerticalRatio(), 0.001f);
+        assertEquals(48f, first.getVerticalOscillation(), 0.001f);
     }
 
     @Test

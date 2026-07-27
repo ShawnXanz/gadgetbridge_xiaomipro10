@@ -10,6 +10,25 @@ repository on Codeberg.
 - Persist sleep stages and summary data from version-6 reports.
 - Decode and persist version-6 sleep HRV samples.
 - Expose HRV providers for the Xiaomi Smart Band 10 Pro coordinator.
+- Parse Xiaomi treadmill summary version 13 and workout details version 9.
+- Preserve every Xiaomi activity file as both an external raw file and an exact
+  database BLOB, including fields that are not understood or displayed yet.
+
+## Data-preservation principle
+
+Lossless preservation of data received from the band is a primary requirement
+of this project.
+
+- Unknown, unsupported, or currently unused fields must not be silently
+  discarded when their original bytes can be retained.
+- Parsing and presentation are allowed to improve later; the source bytes must
+  remain available for reprocessing.
+- A database migration or parser change must not replace or destroy the only
+  copy of raw data.
+- Existing external raw files remain supported, while database copies provide
+  an independent recovery path and are included in database exports.
+- Tests for new file-backed features should cover recovery when the external
+  raw file is unavailable.
 
 ## Privacy
 

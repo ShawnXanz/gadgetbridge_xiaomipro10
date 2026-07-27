@@ -52,6 +52,16 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
         public Integer spo2;
         public Integer cadence;
         public Integer speedRaw;
+        public Integer paceSecondsPerKm;
+        public Integer stepLengthMm;
+        public Double distanceMeters;
+        public Integer powerWatts;
+        public Float impactForceBodyWeight;
+        public Integer groundContactTimeMs;
+        public Integer flightTimeMs;
+        public Float groundContactFlightRatio;
+        public Float verticalRatioPercent;
+        public Float verticalOscillationMm;
         /** True on the first record of each interval/segment, for layouts whose phase
          *  semantics are confirmed (currently rowing v4 only). Drives
          *  {@link ActivityTrack} segment boundaries → one FIT lap per interval. */
@@ -62,6 +72,10 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
         /** Per-segment strokes parsed directly from the segment header (rowing v4).
          *  Only set on a {@link #segmentStart} record; null when not encoded. */
         public Integer segmentStrokes;
+        /** Segment distance from the v9 indoor-running header. */
+        public Integer segmentDistanceMeters;
+        public Integer segmentDurationSeconds;
+        public Integer segmentPaceSecondsPerKm;
     }
 
     @Override
@@ -90,7 +104,8 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
                 // record of each segment. The first marked segment sets the metadata of the
                 // implicit initial segment; later ones open new segments → one FIT lap each.
                 final ActivityTrack.SegmentInfo info = new ActivityTrack.SegmentInfo(
-                        r.segmentIntensity, null, r.segmentStrokes);
+                        r.segmentIntensity, r.segmentDistanceMeters, r.segmentStrokes,
+                        r.segmentDurationSeconds, r.segmentPaceSecondsPerKm);
                 if (firstSegment) {
                     track.setCurrentSegmentInfo(info);
                 } else {
@@ -113,7 +128,24 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
                                      final WorkoutDetailRecord r) {
         if (r.hr > 0) builder.setHeartRate(r.hr);
         if (r.cadence != null && r.cadence > 0) builder.setCadence(r.cadence);
-        if (version == 6 && r.speedRaw != null && r.speedRaw > 0) {
+        if (r.stepLengthMm != null && r.stepLengthMm > 0) builder.setStepLength(r.stepLengthMm);
+        if (r.distanceMeters != null && r.distanceMeters >= 0) builder.setDistance(r.distanceMeters);
+        if (r.powerWatts != null && r.powerWatts > 0) builder.setPower(r.powerWatts);
+        if (r.groundContactTimeMs != null && r.groundContactTimeMs > 0) {
+            builder.setStanceTime(r.groundContactTimeMs);
+        }
+        if (r.verticalRatioPercent != null && r.verticalRatioPercent > 0) {
+            builder.setVerticalRatio(r.verticalRatioPercent);
+        }
+        if (r.verticalOscillationMm != null && r.verticalOscillationMm > 0) {
+            builder.setVerticalOscillation(r.verticalOscillationMm);
+        }
+        if (r.paceSecondsPerKm != null && r.paceSecondsPerKm > 0) {
+            final float speedMps = 1000f / r.paceSecondsPerKm;
+            if (speedMps > 0f && speedMps < 20f) {
+                builder.setSpeed(speedMps);
+            }
+        } else if (version == 6 && r.speedRaw != null && r.speedRaw > 0) {
             final float speedMps = 256000f / r.speedRaw;
             if (speedMps > 0f && speedMps < 20f) {
                 builder.setSpeed(speedMps);
@@ -165,7 +197,21 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
                                             final WorkoutDetailRecord r) {
         if (r.hr > 0) p.setHeartRate(r.hr);
         if (r.cadence != null && r.cadence > 0) p.setCadence(r.cadence);
-        if (version == 6 && r.speedRaw != null && r.speedRaw > 0) {
+        if (r.distanceMeters != null && r.distanceMeters >= 0) p.setDistance(r.distanceMeters);
+        if (r.powerWatts != null && r.powerWatts > 0) p.setPower(r.powerWatts);
+        if (r.groundContactTimeMs != null && r.groundContactTimeMs > 0) {
+            p.setStanceTime(r.groundContactTimeMs);
+        }
+        if (r.verticalRatioPercent != null && r.verticalRatioPercent > 0) {
+            p.setVerticalRatio(r.verticalRatioPercent);
+        }
+        if (r.verticalOscillationMm != null && r.verticalOscillationMm > 0) {
+            p.setVerticalOscillation(r.verticalOscillationMm);
+        }
+        if (r.paceSecondsPerKm != null && r.paceSecondsPerKm > 0) {
+            final float speedMps = 1000f / r.paceSecondsPerKm;
+            if (speedMps > 0f && speedMps < 20f) p.setSpeed(speedMps);
+        } else if (version == 6 && r.speedRaw != null && r.speedRaw > 0) {
             final float speedMps = 256000f / r.speedRaw;
             if (speedMps > 0f && speedMps < 20f) p.setSpeed(speedMps);
         } else if (version == 5 && r.speedRaw != null && r.speedRaw > 0) {
@@ -203,6 +249,10 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
 
     @Nullable
     private static List<WorkoutDetailRecord> parseRecords(final XiaomiActivityFileId fileId, final byte[] bytes) {
+        if (bytes == null || bytes.length < 12) {
+            LOG.warn("Workout DETAILS file is too short: {} bytes", bytes == null ? 0 : bytes.length);
+            return null;
+        }
         final int version = fileId.getVersion();
         // Layout code keys the segment-header + record-read switches. Defaults to `version`,
         // but signature-keyed sub-dispatch (e.g. v3 FFBB53, v5 FFCFF8BFFF) can override it
@@ -428,6 +478,30 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
                 nrPosition = 4;
                 layoutCode = 108;
                 break;
+            case 9:
+                if (bytes.length >= 14
+                        && bytes[8] == (byte) 0xFF && bytes[9] == (byte) 0xFF
+                        && bytes[10] == (byte) 0x8B && bytes[11] == (byte) 0xFF
+                        && bytes[12] == (byte) 0xBB && bytes[13] == (byte) 0xBF) {
+                    // Mi Fitness indoor_running_record_v9:
+                    // signature (6) | count u32 | timestamp u32 | segmentInfo u8 |
+                    // distance u32 (metres) | duration u32 | pace u16,
+                    // followed by 18-byte, one-second records.
+                    expectedSignature = new byte[]{
+                            (byte) 0xFF, (byte) 0xFF, (byte) 0x8B,
+                            (byte) 0xFF, (byte) 0xBB, (byte) 0xBF
+                    };
+                    segmentHeaderSize = 19;
+                    recordSize = 18;
+                    tsPosition = 4;
+                    nrPosition = 0;
+                    layoutCode = 209;
+                } else {
+                    LOG.warn("Unknown v9 DETAILS signature: {}",
+                            GB.hexdump(bytes, 8, Math.min(6, bytes.length - 8)));
+                    return null;
+                }
+                break;
             default:
                 LOG.warn("Unable to parse workout details version {}", version);
                 return null;
@@ -452,6 +526,7 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
         buf.get(new byte[expectedSignature.length]); // skip signature
 
         final List<WorkoutDetailRecord> records = new ArrayList<>();
+        double cumulativeDistanceMeters = 0;
 
         while (buf.position() < buf.limit()) {
             // Read segment header
@@ -469,38 +544,61 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
             if (layoutCode == 205) {
                 nr = buf.remaining() / recordSize;
             }
+            if (nr < 0) {
+                LOG.warn("Segment has invalid negative record count {}, stopping", nr);
+                return null;
+            }
             LOG.debug("Segment: {} records starting at ts={}", nr, ts);
 
             // Per-segment interval metadata — only for layouts with confirmed phase semantics.
             // Rowing v4: header offset 8 = phase (0x81 active / 0x82 rest), offset 9-12 = strokes.
             // Stamped onto the first record of the segment so getActivityTrack can open one
             // ActivityTrack segment (→ FIT lap) per interval.
-            final boolean segmentedLayout = layoutCode == 4;
+            final boolean segmentedLayout = layoutCode == 4 || layoutCode == 209;
             ActivityTrack.SegmentIntensity segmentIntensity = null;
             Integer segmentStrokes = null;
+            Integer segmentDistanceMeters = null;
+            Integer segmentDurationSeconds = null;
+            Integer segmentPaceSecondsPerKm = null;
             if (segmentedLayout) {
-                final byte phase = segHdr.get(8);
-                segmentIntensity = phase == (byte) 0x81 ? ActivityTrack.SegmentIntensity.ACTIVE
-                        : phase == (byte) 0x82 ? ActivityTrack.SegmentIntensity.REST
-                        : ActivityTrack.SegmentIntensity.UNKNOWN;
-                final int strokes = segHdr.getInt(9);
-                segmentStrokes = strokes > 0 ? strokes : null;
+                if (layoutCode == 4) {
+                    final byte phase = segHdr.get(8);
+                    segmentIntensity = phase == (byte) 0x81 ? ActivityTrack.SegmentIntensity.ACTIVE
+                            : phase == (byte) 0x82 ? ActivityTrack.SegmentIntensity.REST
+                            : ActivityTrack.SegmentIntensity.UNKNOWN;
+                    final int strokes = segHdr.getInt(9);
+                    segmentStrokes = strokes > 0 ? strokes : null;
+                } else {
+                    segmentIntensity = ActivityTrack.SegmentIntensity.ACTIVE;
+                    final long distance = segHdr.getInt(9) & 0xffffffffL;
+                    segmentDistanceMeters = distance > 0
+                            ? (int) distance
+                            : null;
+                    final long duration = segHdr.getInt(13) & 0xffffffffL;
+                    segmentDurationSeconds = duration > 0 ? (int) duration : null;
+                    final int pace = segHdr.getShort(17) & 0xffff;
+                    segmentPaceSecondsPerKm = pace > 0 ? pace : null;
+                }
             }
             boolean firstInSegment = true;
 
-            final int segmentEnd = buf.position() + nr * recordSize;
-            if (segmentEnd > buf.limit()) {
+            final long claimedSegmentEnd = (long) buf.position() + (long) nr * recordSize;
+            final int segmentEnd = (int) Math.min(claimedSegmentEnd, buf.limit());
+            if (claimedSegmentEnd > buf.limit()) {
                 LOG.warn("Segment claims {} records but only {} bytes remain, clamping",
                         nr, buf.remaining());
             }
 
-            while (buf.position() < Math.min(segmentEnd, buf.limit())) {
+            while (buf.position() + recordSize <= segmentEnd) {
                 final WorkoutDetailRecord r = new WorkoutDetailRecord();
                 r.ts = ts;
                 if (segmentedLayout && firstInSegment) {
                     r.segmentStart = true;
                     r.segmentIntensity = segmentIntensity;
                     r.segmentStrokes = segmentStrokes;
+                    r.segmentDistanceMeters = segmentDistanceMeters;
+                    r.segmentDurationSeconds = segmentDurationSeconds;
+                    r.segmentPaceSecondsPerKm = segmentPaceSecondsPerKm;
                 }
                 firstInSegment = false;
 
@@ -631,11 +729,38 @@ public class WorkoutDetailsParser extends XiaomiActivityParser {
                         buf.getShort();
                         break;
                     }
+                    case 209: {
+                        // indoor_running_record_v9, one record per second.
+                        final int caloriesAndSteps = buf.get() & 0xff;
+                        r.steps = caloriesAndSteps & 0x0f;
+                        r.hr = buf.get() & 0xff;
+                        final int distanceDecimeters = buf.get() & 0xff;
+                        r.stepLengthMm = (buf.get() & 0xff) * 10;
+                        final int impactTimeInfo = buf.getInt();
+                        r.impactForceBodyWeight = ((impactTimeInfo >>> 26) & 0x3f) / 10f;
+                        r.groundContactTimeMs = (impactTimeInfo >>> 13) & 0x1fff;
+                        r.flightTimeMs = impactTimeInfo & 0x1fff;
+                        r.groundContactFlightRatio = (buf.get() & 0xff) / 10f;
+                        r.cadence = buf.get() & 0xff;
+                        r.paceSecondsPerKm = buf.getShort() & 0xffff;
+                        r.powerWatts = buf.getShort() & 0xffff;
+                        r.verticalRatioPercent = (buf.getShort() & 0xffff) / 10f;
+                        // Protocol unit is 0.1 cm, numerically equivalent to millimetres.
+                        r.verticalOscillationMm = (float) (buf.getShort() & 0xffff);
+                        cumulativeDistanceMeters += distanceDecimeters / 10.0;
+                        r.distanceMeters = cumulativeDistanceMeters;
+                        break;
+                    }
                 }
 
                 LOG.trace("Sample: ts={} hr={}", ts, r.hr);
                 records.add(r);
                 ts++;
+            }
+            if (buf.position() < segmentEnd) {
+                LOG.warn("Ignoring {} incomplete trailing bytes in workout DETAILS segment",
+                        segmentEnd - buf.position());
+                buf.position(segmentEnd);
             }
         }
 
