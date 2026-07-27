@@ -238,6 +238,11 @@ public class XiaomiSimpleActivityParser {
             return this;
         }
 
+        public Builder addByte(final String key, final String unit, final double multiplier) {
+            dataEntries.add(new XiaomiSimpleDataEntry(key, unit, buf -> buf.get() & 0xff, multiplier));
+            return this;
+        }
+
         public Builder addShort(final String key, final String unit) {
             dataEntries.add(new XiaomiSimpleDataEntry(key, unit, ByteBuffer::getShort));
             return this;
@@ -261,6 +266,25 @@ public class XiaomiSimpleActivityParser {
         public Builder addUnknown(final int sizeBytes) {
             dataEntries.add(new XiaomiSimpleDataEntry(null, null, buf -> {
                 buf.get(new byte[sizeBytes]);
+                return null;
+            }));
+            return this;
+        }
+
+        /**
+         * Some Xiaomi schemas contain a field only for selected values of the byte
+         * immediately preceding it. The field still occupies a validity-bit slot, but
+         * does not occupy bytes when the condition is false.
+         */
+        public Builder addUnknownIfPreviousByteIn(final int sizeBytes, final int... previousValues) {
+            dataEntries.add(new XiaomiSimpleDataEntry(null, null, buf -> {
+                final int previousValue = buf.get(buf.position() - 1) & 0xff;
+                for (final int candidate : previousValues) {
+                    if (previousValue == candidate) {
+                        buf.get(new byte[sizeBytes]);
+                        break;
+                    }
+                }
                 return null;
             }));
             return this;

@@ -79,7 +79,7 @@ public class GBDaoGenerator {
             outputDir.mkdirs();
         }
 
-        final Schema schema = new Schema(136, MAIN_PACKAGE + ".entities");
+        final Schema schema = new Schema(137, MAIN_PACKAGE + ".entities");
 
         final List<Entity> sampleProvidersToGenerate = new LinkedList<>();
 
@@ -600,7 +600,7 @@ public class GBDaoGenerator {
     private static Entity addXiaomiActivityFile(Schema schema, Entity user, Entity device) {
         final Entity entity = addEntity(schema, "XiaomiActivityFile");
         entity.implementsSerializable();
-        entity.setJavaDoc("Index of raw Xiaomi activity files dumped to disk (SUMMARY/DETAILS/GPS_TRACK).");
+        entity.setJavaDoc("Index and lossless database copy of raw Xiaomi activity files (SUMMARY/DETAILS/GPS_TRACK).");
         final Property deviceId = entity.addLongProperty("deviceId").notNull().primaryKey().getProperty();
         entity.addToOne(device, deviceId);
         entity.addLongProperty("timestamp").notNull().primaryKey();
@@ -610,6 +610,7 @@ public class GBDaoGenerator {
         entity.addIntProperty("timezone").notNull();
         entity.addIntProperty("version").notNull();
         entity.addStringProperty("filePath").notNull();
+        entity.addByteArrayProperty("rawData");
         return entity;
     }
 

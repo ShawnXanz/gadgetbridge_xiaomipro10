@@ -116,6 +116,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Date;
 
 import nodomain.freeyourgadget.gadgetbridge.GBApplication;
 import nodomain.freeyourgadget.gadgetbridge.database.DBHandler;
@@ -126,6 +127,7 @@ import nodomain.freeyourgadget.gadgetbridge.entities.Device;
 import nodomain.freeyourgadget.gadgetbridge.entities.User;
 import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice;
 import nodomain.freeyourgadget.gadgetbridge.model.ActivityKind;
+import nodomain.freeyourgadget.gadgetbridge.model.ActivitySummaryData;
 import nodomain.freeyourgadget.gadgetbridge.model.ActivitySummaryParser;
 import nodomain.freeyourgadget.gadgetbridge.model.ActivitySummaryEntries;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.xiaomi.activity.XiaomiActivityFileId;
@@ -256,6 +258,18 @@ public class WorkoutSummaryParser extends XiaomiActivityParser implements Activi
 
         if (parser != null) {
             parser.parse(summary, buf);
+            if (fileId.getSubtype() == XiaomiActivityFileId.Subtype.SPORTS_TREADMILL
+                    && fileId.getVersion() == 13
+                    && summary.getStartTime() != null) {
+                // The report's end timestamp includes pauses. Gadgetbridge's list/header
+                // duration is end-start, while the watch displays the effective duration.
+                final ActivitySummaryData data = ActivitySummaryData.fromJson(summary.getSummaryData());
+                final Number activeSeconds = data.getNumber(ACTIVE_SECONDS, null);
+                if (activeSeconds != null && activeSeconds.longValue() > 0) {
+                    summary.setEndTime(new Date(
+                            summary.getStartTime().getTime() + activeSeconds.longValue() * 1000L));
+                }
+            }
         }
 
         return summary;
@@ -868,6 +882,8 @@ public class WorkoutSummaryParser extends XiaomiActivityParser implements Activi
             case 11:
                 headerSize = 9;
                 break;
+            case 13:
+                return getTreadmillV13Parser();
             default:
                 LOG.warn("Unable to parse treadmill summary version {}", fileId.getVersion());
                 return null;
@@ -958,6 +974,91 @@ public class WorkoutSummaryParser extends XiaomiActivityParser implements Activi
             builder.addUnknown(7);
         }
 
+        return builder.build();
+    }
+
+    /**
+     * Xiaomi indoor-running report v13. Field order and optional-field condition are
+     * taken from Mi Fitness' bundled indoor_running_report_v13 schema.
+     */
+    private XiaomiSimpleActivityParser getTreadmillV13Parser() {
+        final XiaomiSimpleActivityParser.Builder builder = new XiaomiSimpleActivityParser.Builder();
+        builder.setHeaderSize(12);
+        builder.addInt(TIME_START, UNIT_UNIX_EPOCH_SECONDS);
+        builder.addInt(TIME_END, UNIT_UNIX_EPOCH_SECONDS);
+        builder.addUnknown(4); // total elapsed duration; effective duration follows later
+        builder.addInt(DISTANCE_METERS, UNIT_METERS);
+        builder.addShort(CALORIES_BURNT, UNIT_KCAL);
+        builder.addInt(PACE_AVG_SECONDS_KM, UNIT_SECONDS_PER_KM);
+        builder.addInt(PACE_MAX, UNIT_SECONDS_PER_KM);
+        builder.addInt(PACE_MIN, UNIT_SECONDS_PER_KM);
+        builder.addInt(STEPS, UNIT_STEPS);
+        builder.addShort(STEP_LENGTH_AVG, UNIT_CM);
+        builder.addShort(CADENCE_AVG, UNIT_SPM);
+        builder.addShort(CADENCE_MAX, UNIT_SPM);
+        builder.addByte(HR_AVG, UNIT_BPM);
+        builder.addByte(HR_MAX, UNIT_BPM);
+        builder.addByte(HR_MIN, UNIT_BPM);
+        builder.addFloat(TRAINING_EFFECT_AEROBIC, UNIT_NONE);
+        builder.addUnknown(1); // aerobic training-effect level
+        builder.addByte(MAXIMUM_OXYGEN_UPTAKE, UNIT_ML_KG_MIN);
+        builder.addByte(ActivitySummaryEntries.V02MAX_LEVEL, UNIT_NONE);
+        builder.addUnknown(1); // body-energy consumption
+        builder.addShort(RECOVERY_TIME, UNIT_HOURS);
+        builder.addInt(HR_ZONE_EXTREME, UNIT_SECONDS);
+        builder.addInt(HR_ZONE_ANAEROBIC, UNIT_SECONDS);
+        builder.addInt(HR_ZONE_AEROBIC, UNIT_SECONDS);
+        builder.addInt(HR_ZONE_FAT_BURN, UNIT_SECONDS);
+        builder.addInt(HR_ZONE_WARM_UP, UNIT_SECONDS);
+        builder.addUnknown(5);  // heart-rate zone lower limits
+        builder.addUnknown(20); // five pace-zone durations
+        builder.addShort(CALORIES_TOTAL, UNIT_KCAL);
+        builder.addInt(ACTIVE_SECONDS, UNIT_SECONDS);
+        builder.addFloat(TRAINING_EFFECT_ANAEROBIC, UNIT_NONE);
+        builder.addUnknown(1); // anaerobic training-effect level
+        builder.addUnknown(5); // peak training effect + level
+        builder.addUnknown(2); // indoor-running sub-sport type (not Xiaomi's global type code)
+        builder.addUnknown(1); // selected course
+        // cloudCourseId exists only for selected course 252, 253 or 255.
+        builder.addUnknownIfPreviousByteIn(8, 252, 253, 255);
+        builder.addUnknown(1); // heart-rate zone calculation method
+        builder.addInt(TIME_GOAL, UNIT_SECONDS);
+        builder.addShort(CALORIES_GOAL, UNIT_KCAL);
+        builder.addInt(DISTANCE_GOAL, UNIT_METERS);
+        builder.addInt(PACE_GOAL, UNIT_SECONDS_PER_KM);
+        builder.addFloat(SPEED_GOAL, UNIT_NONE);
+        builder.addShort(CADENCE_GOAL, UNIT_SPM);
+        builder.addInt(DISTANCE_METERS_CALIBRATED, UNIT_METERS);
+        builder.addShort(WORKOUT_LOAD, UNIT_NONE);
+        builder.addUnknown(1); // training-load level
+        builder.addUnknown(4); // running-power index
+        builder.addUnknown(2); // running-power level + training status
+        builder.addShort(ActivitySummaryEntries.PROJECTED_TIME_5KM, UNIT_SECONDS);
+        builder.addShort(ActivitySummaryEntries.PROJECTED_TIME_10KM, UNIT_SECONDS);
+        builder.addShort(ActivitySummaryEntries.PROJECTED_TIME_HALF_MARATHON, UNIT_SECONDS);
+        builder.addShort(ActivitySummaryEntries.PROJECTED_TIME_MARATHON, UNIT_SECONDS);
+        builder.addByte(VITALITY_GAIN, UNIT_NONE);
+        builder.addUnknown(12); // foot-landing durations
+        builder.addUnknown(4);  // pronation and landing distribution
+        builder.addByte(ActivitySummaryEntries.IMPACT_AVG, UNIT_NONE, 0.1);
+        builder.addByte(ActivitySummaryEntries.IMPACT_MAX, UNIT_NONE, 0.1);
+        builder.addShort(AVG_GROUND_CONTACT_TIME, UNIT_MILLISECONDS);
+        builder.addShort(MIN_GROUND_CONTACT_TIME, UNIT_MILLISECONDS);
+        builder.addUnknown(4); // average/minimum flight time (no compatible summary key)
+        builder.addUnknown(2); // average/minimum ground-contact-to-flight ratio
+        builder.addShort(AVG_VERTICAL_RATIO, UNIT_PERCENTAGE, 0.1);
+        builder.addShort(MIN_VERTICAL_RATIO, UNIT_PERCENTAGE, 0.1);
+        builder.addUnknown(2); // maximum vertical ratio
+        // Protocol unit is 0.1 cm, numerically equivalent to millimetres.
+        builder.addShort(AVG_VERTICAL_OSCILLATION, UNIT_MM);
+        builder.addShort(MIN_VERTICAL_OSCILLATION, UNIT_MM);
+        builder.addShort(MAX_VERTICAL_OSCILLATION, UNIT_MM);
+        builder.addUnknown(2); // maximum ground-contact time
+        builder.addUnknown(1); // training feeling
+        builder.addShort(ActivitySummaryEntries.TRAINING_STRESS_SCORE, UNIT_NONE);
+        builder.addShort(ActivitySummaryEntries.AVG_POWER, ActivitySummaryEntries.UNIT_WATT);
+        builder.addShort(ActivitySummaryEntries.MAX_POWER, ActivitySummaryEntries.UNIT_WATT);
+        builder.addUnknown(12); // training-plan id + plan timestamp
         return builder.build();
     }
 

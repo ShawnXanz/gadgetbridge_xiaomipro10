@@ -44,12 +44,14 @@ import nodomain.freeyourgadget.gadgetbridge.database.DBHelper;
 import nodomain.freeyourgadget.gadgetbridge.entities.DaoSession;
 import nodomain.freeyourgadget.gadgetbridge.entities.Device;
 import nodomain.freeyourgadget.gadgetbridge.entities.XiaomiActivityFile;
+import nodomain.freeyourgadget.gadgetbridge.entities.XiaomiActivityFileDao;
 import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice;
 import nodomain.freeyourgadget.gadgetbridge.service.btle.BLETypeConversions;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.xiaomi.XiaomiPreferences;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.xiaomi.XiaomiSupport;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.xiaomi.services.XiaomiHealthService;
 import nodomain.freeyourgadget.gadgetbridge.util.CheckSums;
+import nodomain.freeyourgadget.gadgetbridge.util.FileUtils;
 import nodomain.freeyourgadget.gadgetbridge.util.GB;
 
 public class XiaomiActivityFileFetcher {
@@ -274,7 +276,7 @@ public class XiaomiActivityFileFetcher {
             outputStream.write(bytes);
             outputStream.close();
 
-            registerActivityFile(mHealthService.getSupport().getDevice(), fileId, outputFile);
+            registerActivityFile(mHealthService.getSupport().getDevice(), fileId, outputFile, bytes);
         } catch (final Exception e) {
             LOG.error("Failed to dump bytes to storage", e);
         }
@@ -288,6 +290,26 @@ public class XiaomiActivityFileFetcher {
     public static void registerActivityFile(final GBDevice gbDevice,
                                             final XiaomiActivityFileId fileId,
                                             final File outputFile) {
+        byte[] rawData = null;
+        try {
+            rawData = FileUtils.readAll(outputFile);
+        } catch (final Exception e) {
+            LOG.warn("Failed to read raw bytes for database copy from {}", outputFile, e);
+        }
+        registerActivityFile(gbDevice, fileId, outputFile, rawData);
+    }
+
+    /**
+     * Register the external file and an exact database copy of its contents.
+     *
+     * <p>The BLOB intentionally contains the original transport bytes, including fields that
+     * current parsers do not expose. Keeping this separate from decoded samples lets a future
+     * parser recover data without requiring the external Android/data file to still exist.</p>
+     */
+    public static void registerActivityFile(final GBDevice gbDevice,
+                                            final XiaomiActivityFileId fileId,
+                                            final File outputFile,
+                                            @Nullable final byte[] rawData) {
         final Date ts = fileId.getTimestamp();
         if (ts == null) {
             LOG.warn("Skipping activity file registration - null timestamp for {}", fileId);
@@ -305,6 +327,22 @@ public class XiaomiActivityFileFetcher {
             entry.setTimezone(fileId.getTimezone());
             entry.setVersion(fileId.getVersion());
             entry.setFilePath(outputFile.getAbsolutePath());
+            entry.setRawData(rawData);
+            if (rawData == null) {
+                final List<XiaomiActivityFile> existingEntries =
+                        session.getXiaomiActivityFileDao().queryBuilder()
+                                .where(
+                                        XiaomiActivityFileDao.Properties.DeviceId.eq(dbDevice.getId()),
+                                        XiaomiActivityFileDao.Properties.Timestamp.eq(ts.getTime() / 1000L),
+                                        XiaomiActivityFileDao.Properties.Type.eq(fileId.getTypeCode()),
+                                        XiaomiActivityFileDao.Properties.Subtype.eq(fileId.getSubtypeCode()),
+                                        XiaomiActivityFileDao.Properties.DetailType.eq(fileId.getDetailTypeCode()))
+                                .limit(1)
+                                .list();
+                if (!existingEntries.isEmpty()) {
+                    entry.setRawData(existingEntries.get(0).getRawData());
+                }
+            }
             session.getXiaomiActivityFileDao().insertOrReplace(entry);
         } catch (final Exception e) {
             LOG.warn("Failed to register XiaomiActivityFile row for {}", fileId, e);
