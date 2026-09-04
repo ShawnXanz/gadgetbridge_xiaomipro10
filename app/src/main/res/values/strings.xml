@@ -5570,4 +5570,5 @@
     <string name="gpx_include_navigation">Include turn-by-turn navigation</string>
     <string name="gpx_include_navigation_straight">Include \'Continue straight\' instructions</string>
     <string name="gpx_roundabout_exit">Exit %1$d</string>
+    <string name="pref_title_connect_to_this_device_when_another_device_connects">Connect to this device when another device connects</string>
 </resources>

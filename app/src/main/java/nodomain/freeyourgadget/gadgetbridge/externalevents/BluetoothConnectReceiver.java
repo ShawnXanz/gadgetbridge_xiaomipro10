@@ -18,6 +18,7 @@ package nodomain.freeyourgadget.gadgetbridge.externalevents;
 
 import static nodomain.freeyourgadget.gadgetbridge.impl.GBDevice.State.WAITING_FOR_RECONNECT;
 import static nodomain.freeyourgadget.gadgetbridge.impl.GBDevice.State.WAITING_FOR_SCAN;
+import static nodomain.freeyourgadget.gadgetbridge.util.GBPrefs.DEVICE_CONNECT_BY_TRIGGER;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -34,6 +35,7 @@ import nodomain.freeyourgadget.gadgetbridge.devices.DeviceManager;
 import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice;
 import nodomain.freeyourgadget.gadgetbridge.service.DeviceCommunicationService;
 import nodomain.freeyourgadget.gadgetbridge.util.GBPrefs;
+import nodomain.freeyourgadget.gadgetbridge.util.preferences.DevicePrefs;
 
 public class BluetoothConnectReceiver extends BroadcastReceiver {
     private static final Logger LOG = LoggerFactory.getLogger(BluetoothConnectReceiver.class);
@@ -64,9 +66,20 @@ public class BluetoothConnectReceiver extends BroadcastReceiver {
        observedDevice(address);
     }
 
+    private static void connectByTriggerDevice(final String address) {
+        for (GBDevice d : GBApplication.app().getDeviceManager().getDevices()) {
+            final DevicePrefs prefs = GBApplication.getDevicePrefs(d);
+            final String triggerDevice =  prefs.getString(DEVICE_CONNECT_BY_TRIGGER, "notset");
+            if(triggerDevice.equals(address)) {
+                LOG.debug("device {} connect by trigger device: {}", d.getAliasOrName(), triggerDevice);
+                GBApplication.deviceService(d).connect();
+            }
+        }
+    }
     public static void observedDevice(final String address) {
         final DeviceManager manager = GBApplication.app().getDeviceManager();
         final GBDevice gbDevice = manager.getDeviceByAddress(address);
+        connectByTriggerDevice(address);
         if (gbDevice == null) {
             LOG.debug("observed non-GB device {}", address);
             return;

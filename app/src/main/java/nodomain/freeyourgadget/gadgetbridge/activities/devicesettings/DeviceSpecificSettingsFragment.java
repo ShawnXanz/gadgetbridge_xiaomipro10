@@ -37,8 +37,11 @@ import static nodomain.freeyourgadget.gadgetbridge.devices.miband.MiBandConst.PR
 import static nodomain.freeyourgadget.gadgetbridge.devices.miband.MiBandConst.PREF_SWIPE_UNLOCK;
 import static nodomain.freeyourgadget.gadgetbridge.devices.moyoung.MoyoungConstants.PREF_MOYOUNG_DEVICE_VERSION;
 import static nodomain.freeyourgadget.gadgetbridge.devices.moyoung.MoyoungConstants.PREF_MOYOUNG_WATCH_FACE;
+import static nodomain.freeyourgadget.gadgetbridge.util.GBPrefs.DEVICE_CONNECT_BY_TRIGGER;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -680,6 +683,38 @@ public class DeviceSpecificSettingsFragment extends AbstractPreferenceFragment i
                     return true;
                 }
             });
+        }
+
+        final Preference connectTrigger = findPreference(DEVICE_CONNECT_BY_TRIGGER);
+        if(connectTrigger != null) {
+            final ListPreference connectTriggerPref = (ListPreference) connectTrigger;
+            connectTriggerPref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+            try {
+
+            final Set<BluetoothDevice> pairedDevices = BluetoothAdapter.getDefaultAdapter().getBondedDevices();
+                List<BluetoothDevice> bondedDevices =
+                        (pairedDevices != null) ? new ArrayList<>(pairedDevices) : new ArrayList<>();
+
+                final List<CharSequence> entries = new ArrayList<>();
+                final List<CharSequence> entryValues = new ArrayList<>();
+
+                entries.add(requireContext().getString(R.string.none));
+                entryValues.add("");
+
+                for (final BluetoothDevice bluetoothDevice : bondedDevices) {
+                    if (device.getAddress().equals(bluetoothDevice.getAddress())) {
+                        continue;
+                    }
+                    final String name = bluetoothDevice.getName() != null ? bluetoothDevice.getName() : "Unknown name";
+                    entries.add(name + " (" + bluetoothDevice.getAddress() + ")");
+                    entryValues.add(bluetoothDevice.getAddress());
+                }
+
+                connectTriggerPref.setEntries(entries.toArray(new CharSequence[0]));
+                connectTriggerPref.setEntryValues(entryValues.toArray(new CharSequence[0]));
+            } catch (final SecurityException e) {
+                LOG.error("Failed to list paired devices", e);
+            }
         }
 
         addPreferenceHandlerFor(PREF_SEND_APP_NOTIFICATIONS);

@@ -52,6 +52,7 @@ public class GBPrefs extends Prefs {
     public static final String CALENDAR_BLACKLIST = "calendar_blacklist";
     public static final String DEVICE_AUTO_RECONNECT = "prefs_key_device_auto_reconnect";
     public static final String DEVICE_CONNECT_BACK = "prefs_key_device_reconnect_on_acl";
+    public static final String DEVICE_CONNECT_BY_TRIGGER = "prefs_key_device_connect_by_trigger";
     private static final String AUTO_START = "general_autostartonboot";
     public static final String AUTO_CONNECT_BLUETOOTH = "general_autoconnectonbluetooth";
     public static final String PING_TONE = "ping_tone";

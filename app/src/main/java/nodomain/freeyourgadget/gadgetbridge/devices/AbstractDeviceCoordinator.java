@@ -1077,6 +1077,7 @@ public abstract class AbstractDeviceCoordinator implements DeviceCoordinator {
         if (connectionType.usesBluetoothClassic() || connectionType.usesBluetoothLE()) {
             settings = ArrayUtils.insert(0, settings, R.xml.devicesettings_reconnect_periodic);
             settings = ArrayUtils.insert(0, settings, R.xml.devicesettings_device_connect_back);
+            settings = ArrayUtils.insert(0, settings, R.xml.devicesettings_device_connect_by_trigger);
             if (supportsConnectionPriority()) {
                 settings = ArrayUtils.add(settings, R.xml.devicesettings_connection_priority_low_power);
             }
