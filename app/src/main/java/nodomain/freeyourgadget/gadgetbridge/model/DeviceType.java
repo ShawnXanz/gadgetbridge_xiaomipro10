@@ -501,6 +501,7 @@ import nodomain.freeyourgadget.gadgetbridge.devices.polar.PolarH9DeviceCoordinat
 import nodomain.freeyourgadget.gadgetbridge.devices.bose.NC700Coordinator;
 import nodomain.freeyourgadget.gadgetbridge.devices.bose.QC35Coordinator;
 import nodomain.freeyourgadget.gadgetbridge.devices.qhybrid.QHybridCoordinator;
+import nodomain.freeyourgadget.gadgetbridge.devices.qnscale.QnScaleCoordinator;
 import nodomain.freeyourgadget.gadgetbridge.devices.realme.RealmeBudsAir5ProCoordinator;
 import nodomain.freeyourgadget.gadgetbridge.devices.realme.RealmeBudsAir6ProCoordinator;
 import nodomain.freeyourgadget.gadgetbridge.devices.realme.RealmeBudsT100Coordinator;
@@ -1217,6 +1218,7 @@ public enum DeviceType {
     OLLEE_WATCH_ONE(OlleeDeviceCoordinator.class),
     UNA_WATCH(UnaDeviceCoordinator.class),
     ZEBLAZE_BEYOND_3_PRO(Beyond3ProCoordinator.class),
+    QN_SCALE(QnScaleCoordinator.class),
     TEST(TestDeviceCoordinator.class);
 
     private DeviceCoordinator coordinator;

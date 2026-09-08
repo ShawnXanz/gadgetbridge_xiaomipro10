@@ -2259,6 +2259,7 @@
     <string name="devicetype_casiogbd200" translatable="false">Casio GBD-200</string>
     <string name="devicetype_mismartscale" translatable="false">Mi Smart Scale 2</string>
     <string name="devicetype_micompositionscale" translatable="false">Mi Body Composition Scale 2</string>
+    <string name="devicetype_qnscale" translatable="false">QN-Scale (Chipsea CS20)</string>
     <string name="devicetype_itag" translatable="false">iTag</string>
     <string name="devicetype_idasen" translatable="false">IKEA Idasen Desk</string>
     <string name="devicetype_bfh16" translatable="false">BFH-16</string>
