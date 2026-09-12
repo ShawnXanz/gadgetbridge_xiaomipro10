@@ -477,7 +477,11 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
         final GBDeviceEventUpdatePreferences eventUpdatePreferences = new GBDeviceEventUpdatePreferences()
                 .withPreference(XiaomiPreferences.FEAT_SPO2, true)
-                .withPreference(DeviceSettingsPreferenceConst.PREF_SPO2_ALL_DAY_MONITORING, spo2.getAllDayTracking())
+                // The band reports a numeric mode (0 = off, 1 = sleep-only, 2 = all-day);
+                // only all-day maps to the on/off preference in Gadgetbridge.
+                // Sleep-only is valid on the wire but is not shown in the on-watch
+                // UI nor in the vendor app UI of Mi Band 10, so it reads as off here.
+                .withPreference(DeviceSettingsPreferenceConst.PREF_SPO2_ALL_DAY_MONITORING, spo2.getMode() == XiaomiProto.Spo2Mode.SPO2_MODE_ALL_DAY)
                 .withPreference(
                         DeviceSettingsPreferenceConst.PREF_SPO2_LOW_ALERT_THRESHOLD,
                         String.valueOf(spo2.getAlarmLow().getAlarmLowEnabled() ? spo2.getAlarmLow().getAlarmLowThreshold() : 0)
@@ -502,7 +506,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
         final XiaomiProto.SpO2.Builder spo2 = XiaomiProto.SpO2.newBuilder()
                 .setUnknown1(1)
-                .setAllDayTracking(allDayMonitoring)
+                .setMode(allDayMonitoring ? XiaomiProto.Spo2Mode.SPO2_MODE_ALL_DAY : XiaomiProto.Spo2Mode.SPO2_MODE_OFF)
                 .setAlarmLow(spo2alarmLowBuilder);
 
         getSupport().sendCommand(

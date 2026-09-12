@@ -575,8 +575,20 @@ message ActivitySyncRequestToday {
 
 message SpO2 {
   optional uint32 unknown1 = 1; // 1
-  optional bool allDayTracking = 2;
+  // Was bool allDayTracking: the band uses a numeric mode instead
+  // (0 = off, 1 = sleep-only, 2 = all-day). Sending bool true (1)
+  // enabled sleep-only tracking instead of all-day tracking.
+  // Note: sleep-only is valid on the wire but is not exposed in
+  // the on-watch UI nor in the vendor app UI of Mi Band 10,
+  // so a band left in that state just looks off to the user.
+  optional Spo2Mode mode = 2;
   optional Spo2AlarmLow alarmLow = 4;
+}
+
+enum Spo2Mode {
+  SPO2_MODE_OFF = 0;
+  SPO2_MODE_SLEEP_ONLY = 1;
+  SPO2_MODE_ALL_DAY = 2;
 }
 
 message Spo2AlarmLow {
