@@ -649,7 +649,11 @@ public class FitImporter {
 
         for (final Map.Entry<Integer, Integer> e : unknownRecords.entrySet()) {
             final String NativeMessageNumber = FitDebug.mesgNumLookup(e.getKey());
-            LOG.warn("Unknown record of native number {} seen {} times", NativeMessageNumber, e.getValue());
+            if (NativeMessageNumber.contains("_")) {
+                LOG.info("Unhandled FIT record of native number {} seen {} times", NativeMessageNumber, e.getValue());
+            } else {
+                LOG.warn("Unknown FIT record of native number {} seen {} times", NativeMessageNumber, e.getValue());
+            }
         }
     }
 
