@@ -273,6 +273,14 @@ public class GarminSettingsCustomizer implements DeviceSpecificSettingsCustomize
             url2.setIcon(R.drawable.ic_block);
             url2.setSummary("dciwx.com");
             blacklistedDomains.addPreference(url2);
+
+            final Preference url3 = new Preference(handler.getContext());
+            url3.setKey("pref_blacklisted_url_garmin_cn");
+            url3.setPersistent(false);
+            url3.setSelectable(false);
+            url3.setIcon(R.drawable.ic_block);
+            url3.setSummary("garmin.cn");
+            blacklistedDomains.addPreference(url3);
         }
 
         final Preference prefSleepSend = handler.findPreference("garmin_experimental_sleep_send");
