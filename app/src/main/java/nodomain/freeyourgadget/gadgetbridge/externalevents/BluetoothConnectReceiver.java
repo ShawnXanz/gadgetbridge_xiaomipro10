@@ -69,7 +69,7 @@ public class BluetoothConnectReceiver extends BroadcastReceiver {
     private static void connectByTriggerDevice(final String address) {
         for (GBDevice d : GBApplication.app().getDeviceManager().getDevices()) {
             final DevicePrefs prefs = GBApplication.getDevicePrefs(d);
-            final String triggerDevice =  prefs.getString(DEVICE_CONNECT_BY_TRIGGER, "notset");
+            final String triggerDevice =  prefs.getString(DEVICE_CONNECT_BY_TRIGGER, "none");
             if(triggerDevice.equals(address)) {
                 LOG.debug("device {} connect by trigger device: {}", d.getAliasOrName(), triggerDevice);
                 GBApplication.deviceService(d).connect();

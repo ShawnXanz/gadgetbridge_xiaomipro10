@@ -42,6 +42,7 @@ import static nodomain.freeyourgadget.gadgetbridge.util.GBPrefs.DEVICE_CONNECT_B
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -70,6 +71,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -112,6 +114,7 @@ import nodomain.freeyourgadget.gadgetbridge.util.Prefs;
 import nodomain.freeyourgadget.gadgetbridge.util.preferences.GBSimpleSummaryProvider;
 import nodomain.freeyourgadget.gadgetbridge.util.preferences.MinMaxTextWatcher;
 import nodomain.freeyourgadget.gadgetbridge.util.preferences.PreferenceCategoryMultiline;
+import nodomain.freeyourgadget.gadgetbridge.util.preferences.SubtitleListPreference;
 
 public class DeviceSpecificSettingsFragment extends AbstractPreferenceFragment implements DeviceSpecificSettingsHandler {
 
@@ -687,30 +690,35 @@ public class DeviceSpecificSettingsFragment extends AbstractPreferenceFragment i
 
         final Preference connectTrigger = findPreference(DEVICE_CONNECT_BY_TRIGGER);
         if(connectTrigger != null) {
-            final ListPreference connectTriggerPref = (ListPreference) connectTrigger;
-            connectTriggerPref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+            final SubtitleListPreference connectTriggerPref = (SubtitleListPreference) connectTrigger;
             try {
 
-            final Set<BluetoothDevice> pairedDevices = BluetoothAdapter.getDefaultAdapter().getBondedDevices();
+                final BluetoothManager bluetoothManager = (BluetoothManager) requireContext().getSystemService(Context.BLUETOOTH_SERVICE);
+                final Set<BluetoothDevice> pairedDevices = bluetoothManager.getAdapter().getBondedDevices();
                 List<BluetoothDevice> bondedDevices =
                         (pairedDevices != null) ? new ArrayList<>(pairedDevices) : new ArrayList<>();
+                bondedDevices.sort(Comparator.comparing(BluetoothDevice::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
 
                 final List<CharSequence> entries = new ArrayList<>();
+                final List<CharSequence> entrySubtitles = new ArrayList<>();
                 final List<CharSequence> entryValues = new ArrayList<>();
 
                 entries.add(requireContext().getString(R.string.none));
-                entryValues.add("");
+                entrySubtitles.add(null);
+                entryValues.add("none");
 
                 for (final BluetoothDevice bluetoothDevice : bondedDevices) {
                     if (device.getAddress().equals(bluetoothDevice.getAddress())) {
                         continue;
                     }
-                    final String name = bluetoothDevice.getName() != null ? bluetoothDevice.getName() : "Unknown name";
-                    entries.add(name + " (" + bluetoothDevice.getAddress() + ")");
+                    final String name = Objects.requireNonNullElse(bluetoothDevice.getName(), requireContext().getString(R.string.unknown));
+                    entries.add(name);
+                    entrySubtitles.add(bluetoothDevice.getAddress());
                     entryValues.add(bluetoothDevice.getAddress());
                 }
 
                 connectTriggerPref.setEntries(entries.toArray(new CharSequence[0]));
+                connectTriggerPref.setEntrySubtitles(entrySubtitles.toArray(new CharSequence[0]));
                 connectTriggerPref.setEntryValues(entryValues.toArray(new CharSequence[0]));
             } catch (final SecurityException e) {
                 LOG.error("Failed to list paired devices", e);
