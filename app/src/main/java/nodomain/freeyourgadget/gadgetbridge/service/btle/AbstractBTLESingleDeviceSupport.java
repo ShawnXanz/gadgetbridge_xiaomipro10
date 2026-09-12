@@ -519,7 +519,7 @@ public abstract class AbstractBTLESingleDeviceSupport extends AbstractBTLEDevice
     }
 
     @Override
-    int getMTU(int deviceIdx) {
+    public int getMTU(int deviceIdx) {
         if(deviceIdx != 0){
             throw new IllegalArgumentException("deviceIdx is " + deviceIdx);
         }
