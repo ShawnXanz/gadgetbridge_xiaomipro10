@@ -326,7 +326,9 @@ class JabraEvolve255Support : AbstractHeadphoneBTBRDeviceSupport(LOG) {
         builder.write(*buildGet(FEAT_FIRMWARE_VERSION))
         builder.write(*buildGet(FEAT_PROTO_SUBVERSION))
         builder.write(*buildGet(FEAT_SERIAL_NUMBER))
-        builder.write(*buildGet(FEAT_DEVICE_NAME))
+        if (coordinator.supportsDeviceName()) {
+            builder.write(*buildGet(FEAT_DEVICE_NAME))
+        }
 
         // Device state
         if (!coordinator.supportsOSBatteryLevel(device)) {
@@ -342,7 +344,9 @@ class JabraEvolve255Support : AbstractHeadphoneBTBRDeviceSupport(LOG) {
         }
         builder.write(*buildGet(FEAT_AUTO_REJECT_CALL))
         builder.write(*buildGet(FEAT_MUTE_REMINDER))
-        builder.write(*buildGet(FEAT_SIDETONE))
+        if (coordinator.supportsSideTone()) {
+            builder.write(*buildGet(FEAT_SIDETONE))
+        }
         builder.write(*buildGet(FEAT_CALL_AUDIO_EQ))
         builder.write(*buildGet(FEAT_EQUALIZER_MODE))
         builder.write(*buildGet(FEAT_EQUALIZER_CURVE, 0x00))

@@ -102,6 +102,14 @@ open class JabraEvolve255Coordinator : AbstractBLClassicDeviceCoordinator() {
         return true
     }
 
+    open fun supportsSideTone(): Boolean {
+        return true
+    }
+
+    open fun supportsDeviceName(): Boolean {
+        return true
+    }
+
     override fun getDeviceSettings(device: GBDevice): DeviceSettingsSpec = deviceSettings {
         if (supportsActiveNoiseCancelling()) {
             switchSetting(
@@ -293,25 +301,29 @@ open class JabraEvolve255Coordinator : AbstractBLClassicDeviceCoordinator() {
                     defaultValue = false,
                 )
             }
-            category(
-                key = "active_calls",
-                title = R.string.prefs_active_calls,
-            ) {
-                switchSetting(
-                    key = DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE,
-                    title = R.string.prefs_jabra_sidetone,
-                    summary = R.string.prefs_jabra_sidetone_summary,
-                    defaultValue = false,
-                )
-                seekbar(
-                    key = DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE_VOLUME,
-                    title = R.string.pref_title_touch_volume,
-                    max = 5,
-                    defaultValue = 3,
-                    dependency = DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE,
-                    visibleWhen = { prefs -> prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE, false) },
-                )
+
+            if (supportsSideTone()) {
+                category(
+                    key = "active_calls",
+                    title = R.string.prefs_active_calls,
+                ) {
+                    switchSetting(
+                        key = DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE,
+                        title = R.string.prefs_jabra_sidetone,
+                        summary = R.string.prefs_jabra_sidetone_summary,
+                        defaultValue = false,
+                    )
+                    seekbar(
+                        key = DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE_VOLUME,
+                        title = R.string.pref_title_touch_volume,
+                        max = 5,
+                        defaultValue = 3,
+                        dependency = DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE,
+                        visibleWhen = { prefs -> prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_JABRA_SIDETONE, false) },
+                    )
+                }
             }
+
             category(
                 key = "call_quality",
                 title = R.string.prefs_call_quality,
@@ -333,7 +345,9 @@ open class JabraEvolve255Coordinator : AbstractBLClassicDeviceCoordinator() {
             title = R.string.pref_header_connection,
             icon = R.drawable.ic_mtu,
         ) {
-            deviceName()
+            if (supportsDeviceName()) {
+                deviceName()
+            }
             if (supportsMultipointPairing()) {
                 multipointPairing()
             }

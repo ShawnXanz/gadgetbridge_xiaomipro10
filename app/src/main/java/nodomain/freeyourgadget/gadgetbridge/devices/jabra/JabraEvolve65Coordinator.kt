@@ -48,4 +48,12 @@ class JabraEvolve65Coordinator : JabraEvolve255Coordinator() {
     override fun supportsMultipointPairing(): Boolean {
         return false
     }
+
+    override fun supportsSideTone(): Boolean {
+        return false
+    }
+
+    override fun supportsDeviceName(): Boolean {
+        return false
+    }
 }
