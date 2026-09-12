@@ -126,6 +126,8 @@ import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.FitLocalM
 import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.GpxRouteFileConverter;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.RecordData;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.enums.AlarmLabel;
+import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.enums.AlarmMode;
+import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.enums.Tone;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.enums.WeatherReport;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.messages.FitAlarmSettings;
 import nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.fit.messages.FitDeviceSettings;
@@ -1225,7 +1227,7 @@ public class GarminSupport extends AbstractBTLESingleDeviceSupport implements IC
                 .build());
 
         final List<Number> deviceSettingsTimes = new ArrayList<>();
-        final List<Number> deviceSettingsUnk5 = new ArrayList<>();
+        final List<Number> deviceSettingsMode = new ArrayList<>();
         final List<Number> deviceSettingsEnabled = new ArrayList<>();
         final List<Number> deviceSettingsRepeat = new ArrayList<>();
 
@@ -1235,11 +1237,11 @@ public class GarminSupport extends AbstractBTLESingleDeviceSupport implements IC
                 continue;
             }
 
-            final int soundCode = switch (Alarm.ALARM_SOUND.values()[alarm.getSoundCode()]) {
-                case OFF -> 0;
-                case TONE -> 1;
-                case VIBRATION -> 2;
-                case UNSET, TONE_AND_VIBRATION -> 3;
+            final Tone soundCode = switch (Alarm.ALARM_SOUND.values()[alarm.getSoundCode()]) {
+                case OFF -> Tone.OFF;
+                case TONE -> Tone.SOUND;
+                case VIBRATION -> Tone.VIBRATION;
+                case UNSET, TONE_AND_VIBRATION -> Tone.SOUND_AND_VIBRATION;
             };
             final AlarmLabel label;
 
@@ -1262,9 +1264,9 @@ public class GarminSupport extends AbstractBTLESingleDeviceSupport implements IC
             final FitAlarmSettings.Builder alarmBuilder = new FitAlarmSettings.Builder()
                     .setTime(LocalTime.of(alarm.getHour(), alarm.getMinute()))
                     .setRepeat(repetitionCode)
-                    .setEnabled(alarm.getEnabled() ? 1 : 0)
+                    .setEnabled(alarm.getEnabled())
                     .setSound(soundCode)
-                    .setBacklight(alarm.getBacklight() ? 1 : 0)
+                    .setBacklight(alarm.getBacklight())
                     .setTimeCreated((long) currentTime)
                     .setSnooze(0)
                     .setLabel(label)
@@ -1273,7 +1275,7 @@ public class GarminSupport extends AbstractBTLESingleDeviceSupport implements IC
             dataRecords.add(alarmBuilder.build());
 
             deviceSettingsTimes.add(alarm.getHour() * 60 + alarm.getMinute());
-            deviceSettingsUnk5.add(5);
+            deviceSettingsMode.add(AlarmMode.Custom.num);
             deviceSettingsEnabled.add(alarm.getEnabled() ? 1 : 0);
             deviceSettingsRepeat.add(repetitionCode);
 
@@ -1283,7 +1285,7 @@ public class GarminSupport extends AbstractBTLESingleDeviceSupport implements IC
         if (numberEnabledAlarms > 0) {
             final FitDeviceSettings.Builder deviceSettingsBuilder = new FitDeviceSettings.Builder()
                     .setAlarmsTime(deviceSettingsTimes.toArray(new Number[0]))
-                    .setAlarmsUnk5(deviceSettingsUnk5.toArray(new Number[0]))
+                    .setAlarmsMode(deviceSettingsMode.toArray(new Number[0]))
                     .setAlarmsEnabled(deviceSettingsEnabled.toArray(new Number[0]))
                     .setAlarmsRepeat(deviceSettingsRepeat.toArray(new Number[0]));
 
