@@ -1,3 +1,20 @@
+/*  Copyright (C) 2024-2026 José Rebelo, Thomas Kuehne
+
+    This file is part of Gadgetbridge.
+
+    Gadgetbridge is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Gadgetbridge is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>. */
+
 package nodomain.freeyourgadget.gadgetbridge.service.devices.garmin.http.interceptors;
 
 import androidx.annotation.NonNull;
@@ -32,7 +49,7 @@ public class ContactsInterceptor implements HttpInterceptor {
 
     @Override
     public boolean supports(@NonNull final GarminHttpRequest request) {
-        return "connectapi.garmin.com".equals(request.getDomain()) &&
+        return ("connectapi.garmin.com".equals(request.getDomain()) || "connectapi.garmin.cn".equals(request.getDomain())) &&
                 request.getPath().startsWith("/device-gateway/usercontact/");
     }
 

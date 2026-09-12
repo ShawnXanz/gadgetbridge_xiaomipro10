@@ -1,9 +1,13 @@
 package nodomain.freeyourgadget.gadgetbridge.devices.garmin.watches.fenix;
 
+import androidx.annotation.NonNull;
+
 import java.util.regex.Pattern;
 
 import nodomain.freeyourgadget.gadgetbridge.R;
+import nodomain.freeyourgadget.gadgetbridge.devices.GenericMetricSampleProvider;
 import nodomain.freeyourgadget.gadgetbridge.devices.garmin.watches.GarminWatchCoordinator;
+import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice;
 
 public class GarminFenix7Coordinator extends GarminWatchCoordinator {
     @Override
@@ -14,5 +18,12 @@ public class GarminFenix7Coordinator extends GarminWatchCoordinator {
     @Override
     public int getDeviceNameResource() {
         return R.string.devicetype_garmin_fenix_7;
+    }
+
+    @Override
+    public boolean supportsSolarCharging(@NonNull final GBDevice device) {
+        // Unlike the Fenix 7 Pro models, the original Fenix 7 models use
+        // the same BLE name and BLE product number for non-solar and solar models
+        return true;
     }
 }

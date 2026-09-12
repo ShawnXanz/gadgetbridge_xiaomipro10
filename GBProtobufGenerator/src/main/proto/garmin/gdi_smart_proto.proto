@@ -32,6 +32,7 @@ message Smart {
     optional Service11 service11 = 11;
     optional FindMyWatchService find_my_watch_service = 12;
     optional CoreService core_service = 13;
+    optional Service14 service14 = 14;
     optional SmsNotificationService sms_notification_service = 16;
     optional Service18 service18 = 18;
     optional Service21 service21 = 21;
@@ -83,6 +84,16 @@ message Service11 {
 }
 
 message Service14 {
+    message Message1 {
+        message Message1X {
+            optional sint32 unk1 = 1;
+            optional sint32 unk2 = 2;
+        }
+        optional Message1X unk1 = 1;
+        optional uint32 unk2 = 2;
+        repeated uint32 unk3 = 3;
+    }
+    optional Message1 unk1 = 1;
 }
 
 message Service18 {

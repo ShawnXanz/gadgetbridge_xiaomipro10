@@ -62,12 +62,22 @@ message HttpService {
     optional ResponseType responseType = 6;
   }
 
+  message MultiPartForm {
+    optional string name = 1;
+    optional string filename = 2;
+    optional string content_type = 3;
+    optional DataTransferItem xferData = 5;
+  }
+
   message RawRequest {
     required string url = 1;
     optional Method method = 3;
     repeated Header header = 5;
     optional bool useDataXfer = 6;
     optional bytes rawBody = 7;
+    repeated MultiPartForm multiPartForms = 8;
+    optional uint32 conenctionTimeout = 9;
+    optional uint32 readTimeout = 10;
   }
 
   message RawResponse {
