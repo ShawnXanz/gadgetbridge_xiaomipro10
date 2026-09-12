@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 
 import nodomain.freeyourgadget.gadgetbridge.GBApplication;
 import nodomain.freeyourgadget.gadgetbridge.R;
+import nodomain.freeyourgadget.gadgetbridge.activities.devicesettings.DeviceSettingsPreferenceConst;
 import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventAppInfo;
 import nodomain.freeyourgadget.gadgetbridge.capabilities.loyaltycards.LoyaltyCard;
 import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventDisplayMessage;
@@ -64,6 +65,7 @@ import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventScreenshot
 import nodomain.freeyourgadget.gadgetbridge.devices.huami.zeppos.ZeppOsMapsInstallHandler;
 import nodomain.freeyourgadget.gadgetbridge.devices.huami.zeppos.ZeppOsMusicInstallHandler;
 import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice;
+import nodomain.freeyourgadget.gadgetbridge.model.DeviceType;
 import nodomain.freeyourgadget.gadgetbridge.model.RecordedDataTypes;
 import nodomain.freeyourgadget.gadgetbridge.model.WorldClock;
 import nodomain.freeyourgadget.gadgetbridge.service.AbstractBluetoothDeviceSupport;
@@ -411,11 +413,29 @@ public class ZeppOsSupport extends AbstractBluetoothDeviceSupport
 
     @Override
     public void onSetCallState(final CallSpec callSpec) {
+        if (!getCoordinator().hasDisplay() && getDevice().getType() != DeviceType.AMAZFITHELIORING) {
+            if (callSpec.getCommand() == CallSpec.CALL_INCOMING) {
+                findDeviceService.vibrateForCall(true);
+            } else if (callSpec.getCommand() == CallSpec.CALL_START || callSpec.getCommand() == CallSpec.CALL_END) {
+                findDeviceService.vibrateForCall(false);
+            }
+            return;
+        }
         notificationService.setCallState(callSpec);
     }
 
     @Override
     public void onNotification(final NotificationSpec notificationSpec) {
+        if (!getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_SEND_APP_NOTIFICATIONS, true)) {
+            LOG.debug("App notifications disabled - ignoring");
+            return;
+        }
+
+        if (!getCoordinator().hasDisplay() && getDevice().getType() != DeviceType.AMAZFITHELIORING) {
+            findDeviceService.vibrateForNotification();
+            return;
+        }
+
         notificationService.sendNotification(notificationSpec);
     }
 

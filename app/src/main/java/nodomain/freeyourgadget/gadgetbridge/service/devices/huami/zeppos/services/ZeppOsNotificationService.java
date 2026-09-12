@@ -293,11 +293,6 @@ public class ZeppOsNotificationService extends AbstractZeppOsService {
     }
 
     public void sendNotification(final NotificationSpec notificationSpec) {
-        if (!getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_SEND_APP_NOTIFICATIONS, true)) {
-            LOG.debug("App notifications disabled - ignoring");
-            return;
-        }
-
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         final String senderOrTitle = StringUtils.getFirstOf(notificationSpec.getSender(), notificationSpec.getTitle());

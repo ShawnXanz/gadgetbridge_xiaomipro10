@@ -54,6 +54,8 @@ public class ZeppOsFindDeviceService extends AbstractZeppOsService {
     private final Handler findPhoneHandler = new Handler();
     private boolean findPhoneStarted;
 
+    private final Handler notificationVibrateHandler = new Handler();
+
     public ZeppOsFindDeviceService(final ZeppOsSupport support) {
         super(support, true);
     }
@@ -141,6 +143,7 @@ public class ZeppOsFindDeviceService extends AbstractZeppOsService {
     public void dispose() {
         findWatchHandler.removeCallbacksAndMessages(null);
         findPhoneHandler.removeCallbacksAndMessages(null);
+        notificationVibrateHandler.removeCallbacksAndMessages(null);
     }
 
     public void onFindDevice(final boolean start) {
@@ -158,6 +161,18 @@ public class ZeppOsFindDeviceService extends AbstractZeppOsService {
         if (!start) {
             stopFindPhone();
         }
+    }
+
+    public void vibrateForNotification() {
+        LOG.debug("Find device for notification");
+        notificationVibrateHandler.removeCallbacksAndMessages(null);
+        sendFindDeviceCommand(true);
+        notificationVibrateHandler.postDelayed(() -> sendFindDeviceCommand(false), 500);
+    }
+
+    public void vibrateForCall(final boolean start) {
+        LOG.debug("Find device for call: {}", start);
+        sendFindDeviceCommand(start);
     }
 
     // FIXME should be private?

@@ -476,8 +476,8 @@ public abstract class ZeppOsCoordinator extends HuamiCoordinator {
         //
         // Notifications
         //
+        final List<Integer> notifications = deviceSpecificSettings.addRootScreen(DeviceSpecificSettingsScreen.CALLS_AND_NOTIFICATIONS);
         if (hasDisplay()) {
-            final List<Integer> notifications = deviceSpecificSettings.addRootScreen(DeviceSpecificSettingsScreen.CALLS_AND_NOTIFICATIONS);
             if (supportsBluetoothPhoneCalls(device)) {
                 notifications.add(R.xml.devicesettings_phone_calls_watch_pair);
             } else {
@@ -493,6 +493,9 @@ public abstract class ZeppOsCoordinator extends HuamiCoordinator {
                 notifications.add(R.xml.devicesettings_canned_reply_16);
             }
             notifications.add(R.xml.devicesettings_transliteration);
+        } else {
+            // As of #6755 we support forwarding notifications
+            notifications.add(R.xml.devicesettings_send_app_notifications);
         }
 
         //
