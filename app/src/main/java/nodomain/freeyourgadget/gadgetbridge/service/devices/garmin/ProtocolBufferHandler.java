@@ -175,7 +175,7 @@ public class ProtocolBufferHandler implements MessageHandler {
                                     .setOauthToken(UUID.randomUUID().toString())
                                     .setOauthSecret(RandomStringUtils.insecure().next(35, true, true))
                                     .build()
-                            ).setUnk2(0).build();
+                            ).setRegion(0).build();
 
                     return prepareProtobufResponse(Smart.newBuilder().setAuthenticationService(
                             GdiAuthenticationService.AuthenticationService.newBuilder()
@@ -525,20 +525,23 @@ public class ProtocolBufferHandler implements MessageHandler {
 
             final int transferId = DataTransferHandler.registerData(imageBytes);
 
-            final GdiNotificationsService.PictureResponse response = GdiNotificationsService.PictureResponse.newBuilder()
-                    .setUnk1(1)
+            final GdiNotificationsService.PictureResponse.Builder response = GdiNotificationsService.PictureResponse.newBuilder()
+                    .setStatus(1)
                     .setNotificationId(notificationId)
-                    .setUnk3(0)
-                    .setUnk4(1)
+                    .setPictureType(GdiNotificationsService.PictureType.JPEG)
                     .setDataTransferItem(
                             GdiNotificationsService.DataTransferItem.newBuilder()
                                     .setId(transferId)
                                     .setSize(imageBytes.length)
                                     .build()
-                    )
-                    .build();
+                    );
+
+            if (pictureRequest.hasIndex()) {
+                response.setIndex(pictureRequest.getIndex());
+            }
+
             return Smart.newBuilder().setNotificationsService(
-                    GdiNotificationsService.NotificationsService.newBuilder().setPictureResponse(response)
+                    GdiNotificationsService.NotificationsService.newBuilder().setPictureResponse(response.build())
             ).build();
         }
 
