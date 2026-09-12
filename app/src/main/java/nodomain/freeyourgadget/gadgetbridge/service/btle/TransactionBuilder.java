@@ -212,7 +212,7 @@ public class TransactionBuilder {
     /// {@link GattCallback#onMtuChanged(BluetoothGatt, int, int)}
     @NonNull
     public TransactionBuilder requestMtu(@IntRange(from = 23L, to = 517L) int mtu) {
-        RequestMtuAction action = new RequestMtuAction(mtu);
+        RequestMtuAction action = new RequestMtuAction(mtu, mDeviceSupport, mDeviceIdx);
         return add(action);
     }
 
