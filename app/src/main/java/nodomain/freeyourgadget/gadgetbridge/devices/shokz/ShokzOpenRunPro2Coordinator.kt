@@ -40,6 +40,12 @@ class ShokzOpenRunPro2Coordinator : ShokzCoordinator() {
         return true
     }
 
+    // Confirmed via a Bluetooth HCI snoop capture of the official Shokz app with its account
+    // region set to the US, which is otherwise required for the app itself to show these.
+    override fun supportsClassicAndVolumeBoost(): Boolean {
+        return true
+    }
+
     // Bytes captured from a live Bluetooth HCI snoop of the official Shokz app talking to a
     // real OpenRun Pro 2. Unlike the OpenSwim Pro, VOCAL uses different tuning parameters here.
     override fun equalizerArgs(equalizer: ShokzEqualizer): ByteArray = when (equalizer) {

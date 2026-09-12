@@ -28,6 +28,9 @@ enum class ShokzEqualizer(
     TREBLE(0x04, R.string.sony_equalizer_preset_treble_boost, setOf(ShokzMediaSource.BLUETOOTH)),
     CUSTOM(0x05, R.string.custom, setOf(ShokzMediaSource.BLUETOOTH)),
     SWIMMING(0x07, R.string.Swimming, setOf(ShokzMediaSource.MP3)),
+    // Only shown by the official app when its account region is set to the US.
+    CLASSIC(0x08, R.string.haylou_s35_anc_eq_classic, setOf(ShokzMediaSource.BLUETOOTH)),
+    VOLUME_BOOST(0x0a, R.string.shokz_equalizer_volume_boost, setOf(ShokzMediaSource.BLUETOOTH)),
     ;
 
     companion object {

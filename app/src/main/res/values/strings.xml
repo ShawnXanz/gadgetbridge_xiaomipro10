@@ -5110,6 +5110,7 @@
     <string name="media_source">Media source</string>
     <string name="mp3">MP3</string>
     <string name="media_source_switching_bluetooth_mp3">Switch media source (Bluetooth/MP3)</string>
+    <string name="shokz_equalizer_volume_boost">Volume Boost</string>
     <string name="shokz_equalizer_band_1">Band 1</string>
     <string name="shokz_equalizer_band_2">Band 2</string>
     <string name="shokz_equalizer_band_3">Band 3</string>

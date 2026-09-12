@@ -65,12 +65,22 @@ abstract class ShokzCoordinator : AbstractBLClassicDeviceCoordinator() {
     open fun supportsCustomEqualizer(): Boolean = false
 
     /**
+     * Whether this device supports the Classic (bone-conduction only, air speaker disabled) and
+     * Volume Boost equalizer presets (codes 0x08/0x0a). The official app only shows these when
+     * its account region is set to the US; Gadgetbridge has no such concept, so this is gated
+     * purely on device support. Confirmed present on the OpenRun Pro 2; unverified on other
+     * Shokz devices, so disabled by default.
+     */
+    open fun supportsClassicAndVolumeBoost(): Boolean = false
+
+    /**
      * Encodes the EQUALIZER_SET payload for a given preset. Beyond the preset code (first byte),
      * these carry extra device-specific tuning parameters that were reverse-engineered from the
      * respective official app/device traffic, and may not be identical across Shokz models.
      */
     open fun equalizerArgs(equalizer: ShokzEqualizer): ByteArray = when (equalizer) {
-        ShokzEqualizer.STANDARD, ShokzEqualizer.SWIMMING, ShokzEqualizer.BASS, ShokzEqualizer.TREBLE ->
+        ShokzEqualizer.STANDARD, ShokzEqualizer.SWIMMING, ShokzEqualizer.BASS, ShokzEqualizer.TREBLE,
+        ShokzEqualizer.CLASSIC, ShokzEqualizer.VOLUME_BOOST ->
             byteArrayOf(equalizer.code.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
 
         ShokzEqualizer.VOCAL ->
@@ -113,7 +123,8 @@ abstract class ShokzCoordinator : AbstractBLClassicDeviceCoordinator() {
             filter = {
                 ShokzMediaSource.BLUETOOTH in it.sources &&
                     (supportsBassTreble() || it != ShokzEqualizer.BASS && it != ShokzEqualizer.TREBLE) &&
-                    (supportsCustomEqualizer() || it != ShokzEqualizer.CUSTOM)
+                    (supportsCustomEqualizer() || it != ShokzEqualizer.CUSTOM) &&
+                    (supportsClassicAndVolumeBoost() || it != ShokzEqualizer.CLASSIC && it != ShokzEqualizer.VOLUME_BOOST)
             },
             visibleWhen = { prefs ->
                 !supportsMp3() || ShokzMediaSource.fromPreference(
